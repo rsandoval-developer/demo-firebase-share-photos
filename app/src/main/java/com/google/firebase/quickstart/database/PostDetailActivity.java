@@ -1,6 +1,7 @@
 package com.google.firebase.quickstart.database;
 
 import android.content.Context;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -19,9 +20,9 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
-import com.google.firebase.quickstart.database.models.User;
 import com.google.firebase.quickstart.database.models.Comment;
 import com.google.firebase.quickstart.database.models.Post;
+import com.google.firebase.quickstart.database.models.User;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -139,10 +140,12 @@ public class PostDetailActivity extends BaseActivity implements View.OnClickList
                         // Get user information
                         User user = dataSnapshot.getValue(User.class);
                         String authorName = user.username;
+                        String displayName = user.displayName;
+                        Uri urlPhoto = user.urlPhoto;
 
                         // Create new comment object
                         String commentText = mCommentField.getText().toString();
-                        Comment comment = new Comment(uid, authorName, commentText);
+                        Comment comment = new Comment(uid, authorName, commentText, displayName, urlPhoto);
 
                         // Push the comment, it will appear in the list
                         mCommentsReference.push().setValue(comment);

@@ -16,24 +16,61 @@
 
 package com.google.firebase.quickstart.database;
 
+import android.content.Context;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.CollapsingToolbarLayout;
-import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
+import com.google.firebase.database.ChildEventListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.quickstart.database.models.Comment;
+import com.google.firebase.quickstart.database.models.Post;
+import com.google.firebase.quickstart.database.models.User;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Provides UI for the Detail page with Collapsing Toolbar.
  */
-public class DetailActivity extends AppCompatActivity {
+public class DetailActivity extends BaseActivity implements View.OnClickListener {
 
     public static final String EXTRA_POSITION = "position";
     private String url = "";
     private String title = "";
     public static final String EXTRA_POST_KEY = "post_key";
+
+    private static final String TAG = "DetailActivity";
+    private DatabaseReference mPostReference;
+    private DatabaseReference mCommentsReference;
+    private ValueEventListener mPostListener;
     private String mPostKey;
+    private ImageView mPhoto;
+    private CollapsingToolbarLayout mCollapsingToolbar;
+    private TextView mDetail;
+    private EditText mCommentField;
+    private Button mCommentButton;
+    private RecyclerView mCommentsRecycler;
+
+    private CommentAdapter mAdapter;
+
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -41,39 +78,269 @@ public class DetailActivity extends AppCompatActivity {
         setContentView(R.layout.activity_detail);
         setSupportActionBar((Toolbar) findViewById(R.id.toolbar));
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        // Set Collapsing Toolbar layout to the screen
-        CollapsingToolbarLayout collapsingToolbar =
-                (CollapsingToolbarLayout) findViewById(R.id.collapsing_toolbar);
+        mCollapsingToolbar = (CollapsingToolbarLayout) findViewById(R.id.collapsing_toolbar);
         // Set title of Detail page
         // collapsingToolbar.setTitle(getString(R.string.item_title));
 
+        // Get post key from intent
         mPostKey = getIntent().getStringExtra(EXTRA_POST_KEY);
+        if (mPostKey == null) {
+            throw new IllegalArgumentException("Must pass EXTRA_POST_KEY");
+        }
+
+        // Initialize Database
+        mPostReference = FirebaseDatabase.getInstance().getReference()
+                .child("posts").child(mPostKey);
+        mCommentsReference = FirebaseDatabase.getInstance().getReference()
+                .child("post-comments").child(mPostKey);
 
 
-        ImageView photo = (ImageView) findViewById(R.id.image);
-        Glide.with(this)
-                .load(url)
-                .into(photo);
-        collapsingToolbar.setTitle(title);
+        mPhoto = (ImageView) findViewById(R.id.image);
+        mDetail = (TextView) findViewById(R.id.place_detail);
+        mCommentField = (EditText) findViewById(R.id.field_comment_text);
+        mCommentButton = (Button) findViewById(R.id.button_post_comment);
+        mCommentsRecycler = (RecyclerView) findViewById(R.id.recycler_comments);
+
+        mCommentButton.setOnClickListener(this);
+        mCommentsRecycler.setLayoutManager(new LinearLayoutManager(this));
 
 
-        /*int postion = getIntent().getIntExtra(EXTRA_POSITION, 0);
-        Resources resources = getResources();
-        String[] places = resources.getStringArray(R.array.places);
-        collapsingToolbar.setTitle(places[postion % places.length]);
+    }
 
-        String[] placeDetails = resources.getStringArray(R.array.place_details);
-        TextView placeDetail = (TextView) findViewById(R.id.place_detail);
-        placeDetail.setText(placeDetails[postion % placeDetails.length]);
+    @Override
+    public void onStart() {
+        super.onStart();
 
-        String[] placeLocations = resources.getStringArray(R.array.place_locations);
-        TextView placeLocation =  (TextView) findViewById(R.id.place_location);
-        placeLocation.setText(placeLocations[postion % placeLocations.length]);
+        // Add value event listener to the post
+        // [START post_value_event_listener]
+        mPostListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                // Get Post object and use the values to update the UI
+                Post post = dataSnapshot.getValue(Post.class);
+                // [START_EXCLUDE]
 
-        TypedArray placePictures = resources.obtainTypedArray(R.array.places_picture);
-        ImageView placePicutre = (ImageView) findViewById(R.id.image);
-        placePicutre.setImageDrawable(placePictures.getDrawable(postion % placePictures.length()));
+                Glide.with(DetailActivity.this)
+                        .load(post.urlPhoto)
+                        .into(mPhoto);
+                mCollapsingToolbar.setTitle(post.title);
+                mDetail.setText(post.body);
 
-        placePictures.recycle();*/
+                /*   mAuthorView.setText(post.author);
+                mBodyView.setText(post.body);*/
+                // [END_EXCLUDE]
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                Log.w(TAG, "loadPost:onCancelled", databaseError.toException());
+                Toast.makeText(DetailActivity.this, "Failed to load post.",
+                        Toast.LENGTH_SHORT).show();
+            }
+        };
+        mPostReference.addValueEventListener(mPostListener);
+        // [END post_value_event_listener]
+
+        // Listen for comments
+        mAdapter = new CommentAdapter(this, mCommentsReference);
+        mCommentsRecycler.setAdapter(mAdapter);
+    }
+
+
+    @Override
+    public void onStop() {
+        super.onStop();
+
+        // Remove post value event listener
+        if (mPostListener != null) {
+            mPostReference.removeEventListener(mPostListener);
+        }
+
+        // Clean up comments listener
+        //mAdapter.cleanupListener();
+    }
+
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()) {
+            case R.id.button_post_comment:
+                postComment();
+                break;
+        }
+    }
+
+    private void postComment() {
+        final String uid = getUid();
+        FirebaseDatabase.getInstance().getReference().child("users").child(uid)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                        // Get user information
+                        User user = dataSnapshot.getValue(User.class);
+                        String authorName = user.username;
+                        String displayName = user.displayName;
+                        Uri urlPhoto = user.urlPhoto;
+                        // Create new comment object
+                        String commentText = mCommentField.getText().toString();
+                        Comment comment = new Comment(uid, authorName, commentText, displayName, urlPhoto);
+                        // Push the comment, it will appear in the list
+                        mCommentsReference.push().setValue(comment);
+                        // Clear the field
+                        mCommentField.setText(null);
+                    }
+
+                    @Override
+                    public void onCancelled(DatabaseError databaseError) {
+
+                    }
+                });
+    }
+
+    private static class CommentViewHolder extends RecyclerView.ViewHolder {
+
+        private ImageView photoView;
+        public TextView authorView;
+        public TextView bodyView;
+
+        public CommentViewHolder(View itemView) {
+            super(itemView);
+
+            authorView = (TextView) itemView.findViewById(R.id.comment_author);
+            bodyView = (TextView) itemView.findViewById(R.id.comment_body);
+            photoView = (ImageView) itemView.findViewById(R.id.comment_photo);
+        }
+    }
+
+    private static class CommentAdapter extends RecyclerView.Adapter<CommentViewHolder> {
+
+        private Context mContext;
+        private DatabaseReference mDatabaseReference;
+        private ChildEventListener mChildEventListener;
+
+        private List<String> mCommentIds = new ArrayList<>();
+        private List<Comment> mComments = new ArrayList<>();
+
+        public CommentAdapter(final Context context, DatabaseReference ref) {
+            mContext = context;
+            mDatabaseReference = ref;
+
+            // Create child event listener
+            // [START child_event_listener_recycler]
+            mChildEventListener = new ChildEventListener() {
+                @Override
+                public void onChildAdded(DataSnapshot dataSnapshot, String previousChildName) {
+                    Log.d(TAG, "onChildAdded:" + dataSnapshot.getKey());
+
+                    // A new comment has been added, add it to the displayed list
+                    Comment comment = dataSnapshot.getValue(Comment.class);
+
+                    // [START_EXCLUDE]
+                    // Update RecyclerView
+                    mCommentIds.add(dataSnapshot.getKey());
+                    mComments.add(comment);
+                    notifyItemInserted(mComments.size() - 1);
+                    // [END_EXCLUDE]
+                }
+
+                @Override
+                public void onChildChanged(DataSnapshot dataSnapshot, String previousChildName) {
+                    Log.d(TAG, "onChildChanged:" + dataSnapshot.getKey());
+
+                    // A comment has changed, use the key to determine if we are displaying this
+                    // comment and if so displayed the changed comment.
+                    Comment newComment = dataSnapshot.getValue(Comment.class);
+                    String commentKey = dataSnapshot.getKey();
+
+                    // [START_EXCLUDE]
+                    int commentIndex = mCommentIds.indexOf(commentKey);
+                    if (commentIndex > -1) {
+                        // Replace with the new data
+                        mComments.set(commentIndex, newComment);
+
+                        // Update the RecyclerView
+                        notifyItemChanged(commentIndex);
+                    } else {
+                        Log.w(TAG, "onChildChanged:unknown_child:" + commentKey);
+                    }
+                    // [END_EXCLUDE]
+                }
+
+                @Override
+                public void onChildRemoved(DataSnapshot dataSnapshot) {
+                    Log.d(TAG, "onChildRemoved:" + dataSnapshot.getKey());
+
+                    // A comment has changed, use the key to determine if we are displaying this
+                    // comment and if so remove it.
+                    String commentKey = dataSnapshot.getKey();
+
+                    // [START_EXCLUDE]
+                    int commentIndex = mCommentIds.indexOf(commentKey);
+                    if (commentIndex > -1) {
+                        // Remove data from the list
+                        mCommentIds.remove(commentIndex);
+                        mComments.remove(commentIndex);
+
+                        // Update the RecyclerView
+                        notifyItemRemoved(commentIndex);
+                    } else {
+                        Log.w(TAG, "onChildRemoved:unknown_child:" + commentKey);
+                    }
+                    // [END_EXCLUDE]
+                }
+
+                @Override
+                public void onChildMoved(DataSnapshot dataSnapshot, String previousChildName) {
+                    Log.d(TAG, "onChildMoved:" + dataSnapshot.getKey());
+
+                    // A comment has changed position, use the key to determine if we are
+                    // displaying this comment and if so move it.
+                    Comment movedComment = dataSnapshot.getValue(Comment.class);
+                    String commentKey = dataSnapshot.getKey();
+
+                    // ...
+                }
+
+                @Override
+                public void onCancelled(DatabaseError databaseError) {
+                    Log.w(TAG, "postComments:onCancelled", databaseError.toException());
+                    Toast.makeText(mContext, "Failed to load comments.",
+                            Toast.LENGTH_SHORT).show();
+                }
+            };
+            ref.addChildEventListener(mChildEventListener);
+            // [END child_event_listener_recycler]
+        }
+
+        @Override
+        public CommentViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+            LayoutInflater inflater = LayoutInflater.from(mContext);
+            View view = inflater.inflate(R.layout.item_comment, parent, false);
+            return new CommentViewHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(CommentViewHolder holder, int position) {
+            Comment comment = mComments.get(position);
+            holder.authorView.setText(comment.author);
+            holder.bodyView.setText(comment.text);
+
+            Glide.with(mContext)
+                    .load(comment.urlPhoto)
+                    .placeholder(R.drawable.ic_action_account_circle_40)
+                    .into(holder.photoView);
+
+        }
+
+        @Override
+        public int getItemCount() {
+            return mComments.size();
+        }
+
+        public void cleanupListener() {
+            if (mChildEventListener != null) {
+                mDatabaseReference.removeEventListener(mChildEventListener);
+            }
+        }
+
     }
 }

@@ -36,7 +36,7 @@ public class PostViewHolder extends RecyclerView.ViewHolder {
 
     }
 
-    public void bindToPost(final Context context, final Post post, View.OnClickListener starClickListener) {
+    public void bindToPost(final Context context, final Post post, View.OnClickListener starClickListener, View.OnClickListener comentariosClickListener) {
         titleView.setText(post.title);
         //authorView.setText(post.author);
         numStarsView.setText(String.valueOf(post.starCount));
@@ -47,18 +47,8 @@ public class PostViewHolder extends RecyclerView.ViewHolder {
                 .load(post.urlPhoto)
                 .into(photo);
 
-        actionButton.setOnClickListener(starClickListener);
-
-       /* actionButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(context, DetailActivity.class);
-                intent.putExtra("url", post.urlPhoto);
-                intent.putExtra("title", post.title);
-                context.startActivity(intent);
-            }
-        });*/
-
+        starView.setOnClickListener(starClickListener);
+        actionButton.setOnClickListener(comentariosClickListener);
 
     }
 }

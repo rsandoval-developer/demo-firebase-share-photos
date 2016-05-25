@@ -3,12 +3,15 @@ package com.google.firebase.quickstart.database;
 import android.app.ProgressDialog;
 import android.support.v7.app.AppCompatActivity;
 
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.firebase.analytics.FirebaseAnalytics;
 import com.google.firebase.auth.FirebaseAuth;
 
 
 public class BaseActivity extends AppCompatActivity {
 
     private ProgressDialog mProgressDialog;
+    public GoogleApiClient mGoogleApiClient;
 
     public void showProgressDialog() {
         if (mProgressDialog == null) {

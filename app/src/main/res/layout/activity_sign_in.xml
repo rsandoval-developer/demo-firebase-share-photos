@@ -44,6 +44,11 @@
             android:inputType="textPassword"
             android:maxLines="1" />
 
+        <Spinner
+            android:id="@+id/sexo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
     </LinearLayout>
 
     <LinearLayout
@@ -70,6 +75,13 @@
             android:text="@string/sign_up" />
 
     </LinearLayout>
+
+    <com.google.android.gms.common.SignInButton
+        android:id="@+id/sign_in_button"
+        android:layout_marginTop="10dp"
+        android:layout_below="@+id/layout_buttons"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
 
 
 </RelativeLayout>

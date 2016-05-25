@@ -23,10 +23,15 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 
+import com.google.android.gms.auth.api.Auth;
+import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.common.api.Status;
+import com.google.firebase.analytics.FirebaseAnalytics;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.quickstart.database.fragment.MyPostsFragment;
 import com.google.firebase.quickstart.database.fragment.MyTopPostsFragment;
@@ -38,6 +43,8 @@ public class MainActivity extends BaseActivity {
 
     private FragmentPagerAdapter mPagerAdapter;
     private ViewPager mViewPager;
+    private FirebaseAnalytics mFirebaseAnalytics;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -91,6 +98,9 @@ public class MainActivity extends BaseActivity {
 
         TabLayout tabs = (TabLayout) findViewById(R.id.tabs);
         tabs.setupWithViewPager(mViewPager);
+
+        mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
+
     }
 
     @Override
@@ -104,6 +114,7 @@ public class MainActivity extends BaseActivity {
         switch (item.getItemId()) {
             case R.id.action_logout:
                 FirebaseAuth.getInstance().signOut();
+                // signOutGoogle();
                 startActivity(new Intent(this, SignInActivity.class));
                 return true;
             default:
@@ -111,4 +122,23 @@ public class MainActivity extends BaseActivity {
         }
     }
 
+    private void signOutGoogle() {
+        Auth.GoogleSignInApi.revokeAccess(mGoogleApiClient).setResultCallback(
+                new ResultCallback<Status>() {
+                    @Override
+                    public void onResult(Status status) {
+                        Log.d(TAG, "signOutGoogle:" + status);
+                    }
+                });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Bundle params = new Bundle();
+        params.putString("image_name", "onresume");
+        params.putString("full_text", "fotos");
+        mFirebaseAnalytics.logEvent("database", params);
+
+    }
 }

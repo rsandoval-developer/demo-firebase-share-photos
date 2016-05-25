@@ -9,9 +9,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 
-import com.bumptech.glide.Glide;
 import com.firebase.ui.database.FirebaseRecyclerAdapter;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
@@ -21,6 +19,7 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.MutableData;
 import com.google.firebase.database.Query;
 import com.google.firebase.database.Transaction;
+import com.google.firebase.quickstart.database.DetailActivity;
 import com.google.firebase.quickstart.database.PostDetailActivity;
 import com.google.firebase.quickstart.database.R;
 import com.google.firebase.quickstart.database.models.Post;
@@ -96,7 +95,7 @@ public abstract class PostListFragment extends Fragment {
                 }
 
                 // Bind Post to ViewHolder, setting OnClickListener for the star button
-                viewHolder.bindToPost(getActivity(),model, new View.OnClickListener() {
+                viewHolder.bindToPost(getActivity(), model, new View.OnClickListener() {
                     @Override
                     public void onClick(View starView) {
                         // Neeed to write to both places the post is stored
@@ -106,6 +105,13 @@ public abstract class PostListFragment extends Fragment {
                         // Run two transactions
                         onStarClicked(globalPostRef);
                         onStarClicked(userPostRef);
+                    }
+                }, new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        Intent intent = new Intent(getActivity(), DetailActivity.class);
+                        intent.putExtra(DetailActivity.EXTRA_POST_KEY, postKey);
+                        startActivity(intent);
                     }
                 });
             }
